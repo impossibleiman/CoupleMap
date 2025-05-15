@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Couple Map</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      /* Styles for resizable image crop container */
+      #image-crop-container {
+        position: relative;
+        width: 300px;
+        height: 200px;
+        border: 2px solid #ccc;
+        overflow: hidden;
+        resize: both;
+        overflow: auto;
+        margin-bottom: 10px;
+      }
+      #image-crop-container img {
+        width: 100%;
+        height: auto;
+        user-select: none;
+        pointer-events: none;
+      }
+    </style>
+</head>
+<body>
+    <div id="container">
+      <div id="map"></div>
+      <div id="places">
+        <h2>Places You've Been</h2>
+        <div id="visited-places"></div>
+        <h2>Places You Want to Go</h2>
+        <div id="wishlist-places"></div>
+        <button id="show-form-btn">Add Submission</button>
+      </div>
+    </div>
+
+    <!-- Modal container for submission form -->
+    <div id="submission-modal" class="modal" style="display:none;">
+      <div class="modal-content submission-modal-content">
+        <span id="close-modal" class="close">&times;</span>
+        <form id="submission-form">
+          <div class="form-group category-toggle">
+            <label>Category</label>
+            <div class="toggle-buttons">
+              <label class="toggle-button">
+                <input type="radio" name="category" value="visited" required />
+                <span>Places You've Been</span>
+              </label>
+              <label class="toggle-button">
+                <input type="radio" name="category" value="wishlist" required />
+                <span>Places You Want to Go</span>
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="name">Place name</label>
+            <input type="text" id="name" placeholder="Place name" required />
+          </div>
+          <div class="date-inputs-row">
+            <div class="date-input">
+              <label>Day</label>
+              <input type="number" id="day" placeholder="Day" min="1" max="31" style="width: 60px;" />
+            </div>
+            <div class="date-input">
+              <label>Month</label>
+              <input type="number" id="month" placeholder="Month" min="1" max="12" style="width: 60px;" />
+            </div>
+            <div class="date-input">
+              <label>Year</label>
+              <input type="number" id="year" placeholder="Year" min="1900" max="2100" style="width: 80px;" />
+            </div>
+            <div class="date-input">
+              <label for="lat">Latitude</label>
+              <input type="text" id="lat" placeholder="Latitude" required />
+            </div>
+            <div class="date-input">
+              <label for="lng">Longitude</label>
+              <input type="text" id="lng" placeholder="Longitude" required />
+            </div>
+          </div>
+          <button type="submit" id="submission-form-submit">Add Submission</button>
+        </form>
+      </div>
+    <div id="image-controls-modal" class="image-controls-modal" style="display:none;">
+      <h3>Image Controls</h3>
+      <label for="photo-upload">Upload Photo</label><br />
+      <input type="file" id="photo-upload" accept="image/*" /><br />
+      <div id="image-crop-container" style="display:block;">
+        <img id="image-crop" src="" alt="Current Photo" />
+      </div>
+      <label><input type="checkbox" id="remove-photo" /> Remove Image</label><br />
+      <!-- Additional image controls like crop buttons can be added here -->
+    </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="map.js"></script>
+</body>
+</html>
