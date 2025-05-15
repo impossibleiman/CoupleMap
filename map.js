@@ -192,14 +192,24 @@ function populatePlacesSection(places, containerId, category) {
         <h3>${place.name}</h3>
         <p>${formatDate(place.date)}</p>
       </div>
-      ${place.photo ? `<img src="${place.photo}" alt="${place.name}" />` : ''}
+      ${place.photo && place.photo.trim().length > 0 ? `<img src="${place.photo}" alt="${place.name}" />` : ''}
     `;
     // Find the original index of this place in the original places array
     const originalIndex = places.findIndex(p => p === place);
     const editBtn = createEditButton(category, originalIndex);
     const removeBtn = createRemoveButton(category, originalIndex);
-    placeDiv.appendChild(editBtn);
-    placeDiv.appendChild(removeBtn);
+
+    // Remove margin-left styles from buttons
+    editBtn.style.marginLeft = '';
+    removeBtn.style.marginLeft = '';
+
+    // Create a container div for buttons to stack vertically
+    const buttonGroup = document.createElement('div');
+    buttonGroup.className = 'button-group';
+    buttonGroup.appendChild(editBtn);
+    buttonGroup.appendChild(removeBtn);
+
+    placeDiv.appendChild(buttonGroup);
     container.appendChild(placeDiv);
   });
 }
@@ -243,18 +253,28 @@ function loadPlaceIntoForm(category, index) {
   const imageCrop = document.getElementById('image-crop');
   const cropOverlay = document.getElementById('crop-overlay');
   const photoUploadInput = document.getElementById('photo-upload');
-  // Show image controls modal but clear image to require reupload
-  imageCrop.src = '';
-  imageControlsModal.style.display = 'flex';
-  cropOverlay.style.display = 'none'; // Hide crop overlay on edit
-  photoUploadInput.value = ''; // Clear file input to remove file name display
-  document.getElementById('remove-photo').checked = false;
-  // Remove any existing crop preview canvas to avoid duplicate images
-  const existingPreviewCanvas = document.getElementById('crop-preview-canvas');
-  if (existingPreviewCanvas) {
-    existingPreviewCanvas.remove();
+
+  if (place.photo) {
+    // Show existing photo in image box as read-only
+    imageCrop.src = place.photo;
+    cropOverlay.style.display = 'none'; // Hide crop overlay to disable cropping
+    // Disable dragging and resizing by removing event handlers
+    cropOverlay.onmousedown = null;
+    document.onmouseup = null;
+    document.onmousemove = null;
+  } else {
+    // No existing photo, clear image and show crop overlay for new upload
+    imageCrop.src = '';
+    cropOverlay.style.display = 'none'; // Hide crop overlay initially
   }
+
+  // Enable photo upload input to allow uploading new image to change photo
+  photoUploadInput.value = ''; // Clear file input to remove file name display
+  photoUploadInput.disabled = false;
+
+
   document.getElementById('submission-modal').style.display = 'flex';
+  imageControlsModal.style.display = 'flex';
   const submitBtn = document.getElementById('submission-form-submit');
   if (submitBtn) {
     submitBtn.textContent = 'Save changes';
@@ -363,7 +383,59 @@ document.getElementById('photo-upload').addEventListener('change', function() {
         }
       };
 
-      document.getElementById('remove-photo').checked = false;
+
+      // Enable crop overlay dragging and resizing on new image upload
+      cropOverlay.onmousedown = function(e) {
+        if (e.target === resizeHandle) {
+          // Start resizing
+          isResizing = true;
+          resizeStartX = e.clientX;
+          resizeStartY = e.clientY;
+          cropStartWidth = cropOverlay.offsetWidth;
+          cropStartHeight = cropOverlay.offsetHeight;
+          e.preventDefault();
+        } else {
+          // Start dragging
+          isDragging = true;
+          dragStartX = e.clientX;
+          dragStartY = e.clientY;
+          cropStartLeft = cropOverlay.offsetLeft;
+          cropStartTop = cropOverlay.offsetTop;
+          e.preventDefault();
+        }
+      };
+
+      document.onmouseup = function() {
+        isDragging = false;
+        isResizing = false;
+      };
+
+      document.onmousemove = function(e) {
+        if (isDragging) {
+          let newLeft = cropStartLeft + (e.clientX - dragStartX);
+          let newTop = cropStartTop + (e.clientY - dragStartY);
+
+          // Constrain within container
+          newLeft = Math.max(0, Math.min(newLeft, imageCropContainer.clientWidth - cropOverlay.offsetWidth));
+          newTop = Math.max(0, Math.min(newTop, imageCropContainer.clientHeight - cropOverlay.offsetHeight));
+
+          cropOverlay.style.left = newLeft + 'px';
+          cropOverlay.style.top = newTop + 'px';
+        } else if (isResizing) {
+          let deltaX = e.clientX - resizeStartX;
+          let deltaY = e.clientY - resizeStartY;
+          // Use the larger delta to maintain square aspect ratio
+          let delta = Math.max(deltaX, deltaY);
+
+          let newSize = Math.max(50, cropStartWidth + delta); // minimum size 50px
+          // Constrain size to container bounds
+          newSize = Math.min(newSize, imageCropContainer.clientWidth - cropOverlay.offsetLeft);
+          newSize = Math.min(newSize, imageCropContainer.clientHeight - cropOverlay.offsetTop);
+
+          cropOverlay.style.width = newSize + 'px';
+          cropOverlay.style.height = newSize + 'px';
+        }
+      };
     };
     image.src = dataUrl;
   };
@@ -509,7 +581,6 @@ document.getElementById('submission-form').addEventListener('submit', function(e
   const day = document.getElementById('day').value.trim();
   const month = document.getElementById('month').value.trim();
   const year = document.getElementById('year').value.trim();
-  const removePhoto = document.getElementById('remove-photo').checked;
   const lat = document.getElementById('lat').value.trim();
   const lng = document.getElementById('lng').value.trim();
 
@@ -519,7 +590,11 @@ document.getElementById('submission-form').addEventListener('submit', function(e
   }
 
   let photo = '';
-  if (!removePhoto) {
+  // Use the checkbox with id 'remove-photo' to check if photo is removed
+  const removePhotoCheckbox = document.getElementById('remove-photo');
+  const imageCrop = document.getElementById('image-crop');
+  const isPhotoRemoved = removePhotoCheckbox ? removePhotoCheckbox.checked : false;
+  if (!isPhotoRemoved) {
     photo = getCroppedImageDataUrl();
   }
 
@@ -590,8 +665,6 @@ document.getElementById('show-form-btn').addEventListener('click', () => {
   const imageCrop = document.getElementById('image-crop');
   // Clear image on new submission form
   imageCrop.src = '';
-  document.getElementById('remove-photo').checked = false;
-  const submitBtn = document.getElementById('submission-form-submit');
   if (submitBtn) {
     submitBtn.textContent = 'Add Submission';
   }
@@ -648,7 +721,6 @@ document.getElementById('submission-form').addEventListener('submit', function(e
   const day = document.getElementById('day').value.trim();
   const month = document.getElementById('month').value.trim();
   const year = document.getElementById('year').value.trim();
-  const removePhoto = document.getElementById('remove-photo').checked;
   const lat = document.getElementById('lat').value.trim();
   const lng = document.getElementById('lng').value.trim();
 
@@ -658,8 +730,11 @@ document.getElementById('submission-form').addEventListener('submit', function(e
   }
 
   let photo = '';
-  if (!removePhoto) {
-    const imageCrop = document.getElementById('image-crop');
+  // Use the checkbox with id 'remove-photo' to check if photo is removed
+  const removePhotoCheckbox = document.getElementById('remove-photo');
+  const imageCrop = document.getElementById('image-crop');
+  const isPhotoRemoved = removePhotoCheckbox ? removePhotoCheckbox.checked : false;
+  if (!isPhotoRemoved) {
     photo = imageCrop.src || '';
   }
 
@@ -729,3 +804,5 @@ document.getElementById('toggle-sidebar-btn').addEventListener('click', () => {
   placesDiv.classList.toggle('sidebar-closed');
   toggleBtn.classList.toggle('move-btn');
 });
+
+
