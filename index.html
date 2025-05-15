@@ -9,30 +9,12 @@
       href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
     />
     <link rel="stylesheet" href="styles.css" />
-    <style>
-      /* Styles for resizable image crop container */
-      #image-crop-container {
-        position: relative;
-        width: 300px;
-        height: 200px;
-        border: 2px solid #ccc;
-        overflow: hidden;
-        resize: both;
-        overflow: auto;
-        margin-bottom: 10px;
-      }
-      #image-crop-container img {
-        width: 100%;
-        height: auto;
-        user-select: none;
-        pointer-events: none;
-      }
-    </style>
 </head>
 <body>
     <div id="container">
       <div id="map"></div>
-      <div id="places">
+      <button id="toggle-sidebar-btn" aria-label="Toggle Places Sidebar" >☰</button>
+      <div id="places" class="sidebar-closed">
         <h2>Places You've Been</h2>
         <div id="visited-places"></div>
         <h2>Places You Want to Go</h2>
@@ -92,8 +74,9 @@
       <h3>Image Controls</h3>
       <label for="photo-upload">Upload Photo</label><br />
       <input type="file" id="photo-upload" accept="image/*" /><br />
-      <div id="image-crop-container" style="display:block;">
+      <div id="image-crop-container" style="display:block; position: relative;">
         <img id="image-crop" src="" alt="Current Photo" />
+        <div id="crop-overlay" style="display:none; position: absolute; border: 2px dashed #007bff; background-color: rgba(0, 123, 255, 0.2); cursor: move; box-sizing: border-box;"></div>
       </div>
       <label><input type="checkbox" id="remove-photo" /> Remove Image</label><br />
       <!-- Additional image controls like crop buttons can be added here -->

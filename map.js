@@ -184,7 +184,7 @@ function populatePlacesSection(places, containerId, category) {
   // Concatenate the two lists: dated places first, then undated
   const sortedPlaces = placesWithDates.concat(placesWithoutDates);
 
-  sortedPlaces.forEach((place, index) => {
+  sortedPlaces.forEach((place, sortedIndex) => {
     const placeDiv = document.createElement('div');
     placeDiv.className = 'place';
     placeDiv.innerHTML = `
@@ -194,8 +194,10 @@ function populatePlacesSection(places, containerId, category) {
       </div>
       ${place.photo ? `<img src="${place.photo}" alt="${place.name}" />` : ''}
     `;
-    const editBtn = createEditButton(category, index);
-    const removeBtn = createRemoveButton(category, index);
+    // Find the original index of this place in the original places array
+    const originalIndex = places.findIndex(p => p === place);
+    const editBtn = createEditButton(category, originalIndex);
+    const removeBtn = createRemoveButton(category, originalIndex);
     placeDiv.appendChild(editBtn);
     placeDiv.appendChild(removeBtn);
     container.appendChild(placeDiv);
@@ -239,14 +241,18 @@ function loadPlaceIntoForm(category, index) {
   document.getElementById('lng').value = place.coords[1];
   const imageControlsModal = document.getElementById('image-controls-modal');
   const imageCrop = document.getElementById('image-crop');
-  if (place.photo) {
-    imageCrop.src = place.photo;
-    imageControlsModal.style.display = 'flex';
-    document.getElementById('remove-photo').checked = false;
-  } else {
-    imageCrop.src = '';
-    imageControlsModal.style.display = 'none';
-    document.getElementById('remove-photo').checked = false;
+  const cropOverlay = document.getElementById('crop-overlay');
+  const photoUploadInput = document.getElementById('photo-upload');
+  // Show image controls modal but clear image to require reupload
+  imageCrop.src = '';
+  imageControlsModal.style.display = 'flex';
+  cropOverlay.style.display = 'none'; // Hide crop overlay on edit
+  photoUploadInput.value = ''; // Clear file input to remove file name display
+  document.getElementById('remove-photo').checked = false;
+  // Remove any existing crop preview canvas to avoid duplicate images
+  const existingPreviewCanvas = document.getElementById('crop-preview-canvas');
+  if (existingPreviewCanvas) {
+    existingPreviewCanvas.remove();
   }
   document.getElementById('submission-modal').style.display = 'flex';
   const submitBtn = document.getElementById('submission-form-submit');
@@ -261,23 +267,328 @@ document.getElementById('photo-upload').addEventListener('change', function() {
   const reader = new FileReader();
   reader.onload = function(e) {
     const dataUrl = e.target.result;
-    const imageControlsModal = document.getElementById('image-controls-modal');
-    const imageCrop = document.getElementById('image-crop');
-    imageCrop.src = dataUrl;
-    imageControlsModal.style.display = 'flex';
-    document.getElementById('remove-photo').checked = false;
+    const image = new Image();
+    image.onload = function() {
+      const imageCrop = document.getElementById('image-crop');
+      const cropOverlay = document.getElementById('crop-overlay');
+      const imageCropContainer = document.getElementById('image-crop-container');
+
+      // Set the image src to original image only (do not set to cropped image here)
+      imageCrop.src = dataUrl;
+
+      // Show crop overlay
+      cropOverlay.style.display = 'block';
+
+      // Reset crop overlay size and position to default square in center
+      const containerWidth = imageCropContainer.clientWidth;
+      const containerHeight = imageCropContainer.clientHeight;
+      const size = Math.min(containerWidth, containerHeight) * 0.8; // 80% of smaller dimension
+      cropOverlay.style.width = size + 'px';
+      cropOverlay.style.height = size + 'px';
+      cropOverlay.style.left = ((containerWidth - size) / 2) + 'px';
+      cropOverlay.style.top = ((containerHeight - size) / 2) + 'px';
+
+      // Variables for dragging and resizing
+      let isDragging = false;
+      let dragStartX = 0;
+      let dragStartY = 0;
+      let cropStartLeft = 0;
+      let cropStartTop = 0;
+
+      // Variables for resizing
+      let isResizing = false;
+      let resizeStartX = 0;
+      let resizeStartY = 0;
+      let cropStartWidth = 0;
+      let cropStartHeight = 0;
+
+      // Add resize handle element
+      let resizeHandle = cropOverlay.querySelector('.resize-handle');
+      if (!resizeHandle) {
+        resizeHandle = document.createElement('div');
+        resizeHandle.className = 'resize-handle';
+        cropOverlay.appendChild(resizeHandle);
+      }
+
+      // Dragging handlers
+      cropOverlay.onmousedown = function(e) {
+        if (e.target === resizeHandle) {
+          // Start resizing
+          isResizing = true;
+          resizeStartX = e.clientX;
+          resizeStartY = e.clientY;
+          cropStartWidth = cropOverlay.offsetWidth;
+          cropStartHeight = cropOverlay.offsetHeight;
+          e.preventDefault();
+        } else {
+          // Start dragging
+          isDragging = true;
+          dragStartX = e.clientX;
+          dragStartY = e.clientY;
+          cropStartLeft = cropOverlay.offsetLeft;
+          cropStartTop = cropOverlay.offsetTop;
+          e.preventDefault();
+        }
+      };
+
+      document.onmouseup = function() {
+        isDragging = false;
+        isResizing = false;
+      };
+
+      document.onmousemove = function(e) {
+        if (isDragging) {
+          let newLeft = cropStartLeft + (e.clientX - dragStartX);
+          let newTop = cropStartTop + (e.clientY - dragStartY);
+
+          // Constrain within container
+          newLeft = Math.max(0, Math.min(newLeft, imageCropContainer.clientWidth - cropOverlay.offsetWidth));
+          newTop = Math.max(0, Math.min(newTop, imageCropContainer.clientHeight - cropOverlay.offsetHeight));
+
+          cropOverlay.style.left = newLeft + 'px';
+          cropOverlay.style.top = newTop + 'px';
+        } else if (isResizing) {
+          let deltaX = e.clientX - resizeStartX;
+          let deltaY = e.clientY - resizeStartY;
+          // Use the larger delta to maintain square aspect ratio
+          let delta = Math.max(deltaX, deltaY);
+
+          let newSize = Math.max(50, cropStartWidth + delta); // minimum size 50px
+          // Constrain size to container bounds
+          newSize = Math.min(newSize, imageCropContainer.clientWidth - cropOverlay.offsetLeft);
+          newSize = Math.min(newSize, imageCropContainer.clientHeight - cropOverlay.offsetTop);
+
+          cropOverlay.style.width = newSize + 'px';
+          cropOverlay.style.height = newSize + 'px';
+        }
+      };
+
+      document.getElementById('remove-photo').checked = false;
+    };
+    image.src = dataUrl;
   };
   reader.readAsDataURL(file);
+});
+
+
+
+// Function to visually indicate crop area by greying out outside the crop overlay on the original image
+function updateCropPreviewWithOverlay() {
+  const imageCrop = document.getElementById('image-crop');
+  const cropOverlay = document.getElementById('crop-overlay');
+  const imageCropContainer = document.getElementById('image-crop-container');
+
+  if (!imageCrop.src) return;
+
+  // Instead of modifying the original image element, create a separate preview canvas element for the overlay effect
+  let previewCanvas = document.getElementById('crop-preview-canvas');
+  if (!previewCanvas) {
+    previewCanvas = document.createElement('canvas');
+    previewCanvas.id = 'crop-preview-canvas';
+    previewCanvas.style.position = 'absolute';
+    previewCanvas.style.top = imageCrop.offsetTop + 'px';
+    previewCanvas.style.left = imageCrop.offsetLeft + 'px';
+    previewCanvas.style.pointerEvents = 'none'; // allow clicks to pass through
+    previewCanvas.style.borderRadius = '5px';
+    imageCrop.parentElement.appendChild(previewCanvas);
+  }
+
+  const img = new Image();
+  img.onload = function() {
+    const displayedWidth = imageCrop.clientWidth;
+    const displayedHeight = imageCrop.clientHeight;
+
+    previewCanvas.width = displayedWidth;
+    previewCanvas.height = displayedHeight;
+
+    const ctx = previewCanvas.getContext('2d');
+
+    // Clear previous drawing
+    ctx.clearRect(0, 0, displayedWidth, displayedHeight);
+
+    // Draw original image
+    ctx.drawImage(img, 0, 0, displayedWidth, displayedHeight);
+
+    // Get crop overlay position and size
+    const cropLeft = cropOverlay.offsetLeft;
+    const cropTop = cropOverlay.offsetTop;
+    const cropSize = cropOverlay.offsetWidth; // square
+
+    // Draw grey overlay outside crop area
+    ctx.fillStyle = 'rgba(128, 128, 128, 0.5)';
+
+    // Top area
+    ctx.fillRect(0, 0, displayedWidth, cropTop);
+    // Bottom area
+    ctx.fillRect(0, cropTop + cropSize, displayedWidth, displayedHeight - (cropTop + cropSize));
+    // Left area
+    ctx.fillRect(0, cropTop, cropLeft, cropSize);
+    // Right area
+    ctx.fillRect(cropLeft + cropSize, cropTop, displayedWidth - (cropLeft + cropSize), cropSize);
+  };
+  img.src = imageCrop.src;
+}
+
+function getCroppedImageDataUrl() {
+  const imageCrop = document.getElementById('image-crop');
+  const cropOverlay = document.getElementById('crop-overlay');
+  const imageCropContainer = document.getElementById('image-crop-container');
+
+  if (!imageCrop.src) return '';
+
+  const img = new Image();
+  img.src = imageCrop.src;
+
+  // Calculate scale between natural image size and displayed size
+  const naturalWidth = img.naturalWidth;
+  const naturalHeight = img.naturalHeight;
+  const displayedWidth = imageCrop.clientWidth;
+  const displayedHeight = imageCrop.clientHeight;
+  const scaleX = naturalWidth / displayedWidth;
+  const scaleY = naturalHeight / displayedHeight;
+
+  // Get crop overlay position and size relative to displayed image
+  const cropLeft = cropOverlay.offsetLeft;
+  const cropTop = cropOverlay.offsetTop;
+  const cropSize = cropOverlay.offsetWidth; // square
+
+  // Calculate crop area in natural image coordinates
+  const cropX = cropLeft * scaleX;
+  const cropY = cropTop * scaleY;
+  const cropWidth = cropSize * scaleX;
+  const cropHeight = cropSize * scaleY;
+
+  // Create canvas for cropped image
+  const canvas = document.createElement('canvas');
+  canvas.width = cropWidth;
+  canvas.height = cropHeight;
+  const ctx = canvas.getContext('2d');
+
+  // Draw cropped image area
+  ctx.drawImage(img, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+
+  // Return data URL of cropped image
+  return canvas.toDataURL('image/png');
+}
+
+document.getElementById('submission-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+
+  // Get selected category from radio buttons
+  const categoryRadios = document.getElementsByName('category');
+  let category = null;
+  for (let i = 0; i < categoryRadios.length; i++) {
+    if (categoryRadios[i].checked) {
+      category = categoryRadios[i].value;
+      break;
+    }
+  }
+  if (!category) {
+    // Provide visual feedback for category selection
+    categoryRadios.forEach(radio => {
+      const label = radio.parentElement;
+      if (label) {
+        label.style.border = '2px solid red';
+      }
+    });
+    // Focus the first category radio input to avoid "not focusable" validation error
+    if (categoryRadios.length > 0) {
+      categoryRadios[0].focus();
+    }
+    setTimeout(() => {
+      categoryRadios.forEach(radio => {
+        const label = radio.parentElement;
+        if (label) {
+          label.style.border = '';
+        }
+      });
+    }, 2000);
+    return;
+  }
+  const name = document.getElementById('name').value.trim();
+  const day = document.getElementById('day').value.trim();
+  const month = document.getElementById('month').value.trim();
+  const year = document.getElementById('year').value.trim();
+  const removePhoto = document.getElementById('remove-photo').checked;
+  const lat = document.getElementById('lat').value.trim();
+  const lng = document.getElementById('lng').value.trim();
+
+  if (!isValidLatLng(lat, lng)) {
+    alert('Please enter valid latitude and longitude values.');
+    return;
+  }
+
+  let photo = '';
+  if (!removePhoto) {
+    photo = getCroppedImageDataUrl();
+  }
+
+  const newPlace = {
+    name,
+    date: { day, month, year },
+    photo,
+    coords: [parseFloat(lat), parseFloat(lng)]
+  };
+
+  if (day || month || year) {
+    const placeDate = dateObjToDate(newPlace.date);
+    const now = new Date();
+
+    if (category === 'visited' && placeDate >= now) {
+      alert('For "Places You\'ve Been", the date must be before the current date.');
+      return;
+    }
+    if (category === 'wishlist' && placeDate <= now) {
+      alert('For "Places You Want to Go", the date must be after the current date.');
+      return;
+    }
+  }
+
+  if (editingPlace) {
+    if (editingPlace.category === category) {
+      if (category === 'visited') {
+        visitedPlaces[editingPlace.index] = newPlace;
+      } else if (category === 'wishlist') {
+        wishlistPlaces[editingPlace.index] = newPlace;
+      }
+    } else {
+      // Category changed, remove from old and add to new
+      if (editingPlace.category === 'visited') {
+        visitedPlaces.splice(editingPlace.index, 1);
+        wishlistPlaces.push(newPlace);
+      } else {
+        wishlistPlaces.splice(editingPlace.index, 1);
+        visitedPlaces.push(newPlace);
+      }
+    }
+    editingPlace = null;
+  } else {
+    if (category === 'visited') {
+      visitedPlaces.push(newPlace);
+    } else if (category === 'wishlist') {
+      wishlistPlaces.push(newPlace);
+    } else {
+      alert('Please select a valid category.');
+      return;
+    }
+  }
+
+  savePlaces();
+  updateMapAndPlaces();
+  this.reset();
+  document.getElementById('submission-modal').style.display = 'none';
+  document.getElementById('image-controls-modal').style.display = 'none';
 });
 
 document.getElementById('show-form-btn').addEventListener('click', () => {
   const modal = document.getElementById('submission-modal');
   const imageControlsModal = document.getElementById('image-controls-modal');
   modal.style.display = 'flex';
-  imageControlsModal.style.display = 'none';
+  imageControlsModal.style.display = 'flex';
   editingPlace = null;
   document.getElementById('submission-form').reset();
   const imageCrop = document.getElementById('image-crop');
+  // Clear image on new submission form
   imageCrop.src = '';
   document.getElementById('remove-photo').checked = false;
   const submitBtn = document.getElementById('submission-form-submit');
@@ -294,12 +605,13 @@ document.getElementById('close-modal').addEventListener('click', () => {
 });
 
 window.addEventListener('click', (event) => {
-  const modal = document.getElementById('submission-modal');
-  const imageControlsModal = document.getElementById('image-controls-modal');
-  if (event.target === modal) {
-    modal.style.display = 'none';
-    imageControlsModal.style.display = 'none';
-  }
+  // Remove closing modal on outside click to keep popup open until X is clicked
+  // const modal = document.getElementById('submission-modal');
+  // const imageControlsModal = document.getElementById('image-controls-modal');
+  // if (event.target === modal) {
+  //   modal.style.display = 'none';
+  //   imageControlsModal.style.display = 'none';
+  // }
 });
 
 document.getElementById('submission-form').addEventListener('submit', function(e) {
@@ -314,7 +626,22 @@ document.getElementById('submission-form').addEventListener('submit', function(e
     }
   }
   if (!category) {
-    alert('Please select a valid category.');
+    // Provide visual feedback for category selection
+    const categoryRadios = document.getElementsByName('category');
+    categoryRadios.forEach(radio => {
+      const label = radio.parentElement;
+      if (label) {
+        label.style.border = '2px solid red';
+      }
+    });
+    setTimeout(() => {
+      categoryRadios.forEach(radio => {
+        const label = radio.parentElement;
+        if (label) {
+          label.style.border = '';
+        }
+      });
+    }, 2000);
     return;
   }
   const name = document.getElementById('name').value.trim();
@@ -395,3 +722,10 @@ document.getElementById('submission-form').addEventListener('submit', function(e
 
 loadPlaces();
 updateMapAndPlaces();
+
+document.getElementById('toggle-sidebar-btn').addEventListener('click', () => {
+  const placesDiv = document.getElementById('places');
+  const toggleBtn = document.getElementById('toggle-sidebar-btn');
+  placesDiv.classList.toggle('sidebar-closed');
+  toggleBtn.classList.toggle('move-btn');
+});
