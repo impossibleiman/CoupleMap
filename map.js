@@ -783,11 +783,50 @@ document.getElementById('submission-form').addEventListener('submit', function(e
 loadPlaces();
 updateMapAndPlaces();
 
+
 document.getElementById('toggle-sidebar-btn').addEventListener('click', () => {
   const placesDiv = document.getElementById('places');
   const toggleBtn = document.getElementById('toggle-sidebar-btn');
+  const currentZoom = map.getZoom();
+  const isSidebarClosed = placesDiv.classList.contains('sidebar-closed');
+
+  if (currentZoom === 2 && !isSidebarClosed) {
+    // Prevent closing sidebar when zoom is 2 and sidebar is open
+    return;
+  }
+
   placesDiv.classList.toggle('sidebar-closed');
   toggleBtn.classList.toggle('move-btn');
+});
+
+map.on('zoomend', () => {
+  const placesDiv = document.getElementById('places');
+  const toggleBtn = document.getElementById('toggle-sidebar-btn');
+  const currentZoom = map.getZoom();
+
+  if (currentZoom === 2) {
+    if (placesDiv.classList.contains('sidebar-closed')) {
+      placesDiv.classList.remove('sidebar-closed');
+      toggleBtn.classList.add('move-btn');
+    }
+    // Hide toggle button when zoom is 2
+    toggleBtn.classList.add('hidden');
+  } else if (currentZoom === 3) {
+    // Close sidebar when zoom changes from 2 to 3
+    if (!placesDiv.classList.contains('sidebar-closed')) {
+      // Hide toggle button immediately to slide with sidebar
+      toggleBtn.classList.add('hidden');
+      placesDiv.classList.add('sidebar-closed');
+      toggleBtn.classList.remove('move-btn');
+      // Show toggle button after sidebar slide animation (300ms delay)
+      setTimeout(() => {
+        toggleBtn.classList.remove('hidden');
+      }, 900);
+    }
+  } else {
+    // Show toggle button when zoom is not 2 or 3
+    toggleBtn.classList.remove('hidden');
+  }
 });
 
 

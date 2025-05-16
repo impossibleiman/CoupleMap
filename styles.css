@@ -72,6 +72,11 @@ body {
   transform: translateX(0);
 }
 
+/* Hide toggle button when hidden class is applied */
+#toggle-sidebar-btn.hidden {
+  display: none !important;
+}
+
 #places.sidebar-closed + #toggle-sidebar-btn {
   transform: translateX(0);
 }
