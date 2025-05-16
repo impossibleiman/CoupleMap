@@ -647,7 +647,13 @@ document.getElementById('show-form-btn').addEventListener('click', () => {
   modal.style.display = 'flex';
   imageControlsModal.style.display = 'flex';
   editingPlace = null;
-  document.getElementById('submission-form').reset();
+  const form = document.getElementById('submission-form');
+  form.reset();
+  // Set date fields to today's date
+  const today = new Date();
+  form.day.value = today.getDate().toString();
+  form.month.value = (today.getMonth() + 1).toString();
+  form.year.value = today.getFullYear().toString();
   const imageCrop = document.getElementById('image-crop');
   // Clear image on new submission form
   imageCrop.src = '';
