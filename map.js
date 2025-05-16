@@ -1,13 +1,14 @@
 const map = L.map('map').setView([20, 0], 3);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  minZoom: 2,
   maxZoom: 19,
   attribution: '© OpenStreetMap contributors',
   noWrap: true
 }).addTo(map);
 
-const southWest = L.latLng(-90, -180);
-const northEast = L.latLng(90, 180);
+const southWest = L.latLng(-180, -180);
+const northEast = L.latLng(360, 360);
 const bounds = L.latLngBounds(southWest, northEast);
 map.setMaxBounds(bounds);
 
