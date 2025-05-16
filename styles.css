@@ -305,6 +305,14 @@ body {
   pointer-events: none;
 }
 
+#Been {
+  color: blue;
+}
+
+#Goto {
+  color: red;
+}
+
 .close {
   color: #aaa;
   position: absolute;
