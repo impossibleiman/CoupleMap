@@ -1,9 +1,15 @@
-const map = L.map('map').setView([20, 0], 2);
+const map = L.map('map').setView([20, 0], 3);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19,
-  attribution: '© OpenStreetMap contributors'
+  attribution: '© OpenStreetMap contributors',
+  noWrap: true
 }).addTo(map);
+
+const southWest = L.latLng(-90, -180);
+const northEast = L.latLng(90, 180);
+const bounds = L.latLngBounds(southWest, northEast);
+map.setMaxBounds(bounds);
 
 const visitedStorageKey = 'coupleMapVisitedPlaces';
 const wishlistStorageKey = 'coupleMapWishlistPlaces';
