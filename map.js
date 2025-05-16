@@ -805,18 +805,26 @@ document.getElementById('toggle-sidebar-btn').addEventListener('click', () => {
   toggleBtn.classList.toggle('move-btn');
 });
 
+let zoomTimeoutId = null;
+
 map.on('zoomend', () => {
   const placesDiv = document.getElementById('places');
   const toggleBtn = document.getElementById('toggle-sidebar-btn');
   const currentZoom = map.getZoom();
 
+  // Clear any pending timeout to prevent toggle button flicker on rapid zoom changes
+  if (zoomTimeoutId) {
+    clearTimeout(zoomTimeoutId);
+    zoomTimeoutId = null;
+  }
+
   if (currentZoom === 2) {
     if (placesDiv.classList.contains('sidebar-closed')) {
       placesDiv.classList.remove('sidebar-closed');
-      toggleBtn.classList.add('move-btn');
     }
-    // Hide toggle button when zoom is 2
+    // Hide toggle button and ensure it is off when zoom is 2
     toggleBtn.classList.add('hidden');
+    toggleBtn.classList.remove('move-btn');
   } else if (currentZoom === 3) {
     // Close sidebar when zoom changes from 2 to 3
     if (!placesDiv.classList.contains('sidebar-closed')) {
@@ -824,9 +832,10 @@ map.on('zoomend', () => {
       toggleBtn.classList.add('hidden');
       placesDiv.classList.add('sidebar-closed');
       toggleBtn.classList.remove('move-btn');
-      // Show toggle button after sidebar slide animation (300ms delay)
-      setTimeout(() => {
+      // Show toggle button after sidebar slide animation (900ms delay)
+      zoomTimeoutId = setTimeout(() => {
         toggleBtn.classList.remove('hidden');
+        zoomTimeoutId = null;
       }, 900);
     }
   } else {
