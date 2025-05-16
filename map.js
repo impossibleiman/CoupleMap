@@ -555,28 +555,7 @@ document.getElementById('submission-form').addEventListener('submit', function(e
       break;
     }
   }
-  if (!category) {
-    // Provide visual feedback for category selection
-    categoryRadios.forEach(radio => {
-      const label = radio.parentElement;
-      if (label) {
-        label.style.border = '2px solid red';
-      }
-    });
-    // Focus the first category radio input to avoid "not focusable" validation error
-    if (categoryRadios.length > 0) {
-      categoryRadios[0].focus();
-    }
-    setTimeout(() => {
-      categoryRadios.forEach(radio => {
-        const label = radio.parentElement;
-        if (label) {
-          label.style.border = '';
-        }
-      });
-    }, 2000);
-    return;
-  }
+
   const name = document.getElementById('name').value.trim();
   const day = document.getElementById('day').value.trim();
   const month = document.getElementById('month').value.trim();
@@ -665,6 +644,7 @@ document.getElementById('show-form-btn').addEventListener('click', () => {
   const imageCrop = document.getElementById('image-crop');
   // Clear image on new submission form
   imageCrop.src = '';
+  const submitBtn = document.getElementById('submission-form-submit');
   if (submitBtn) {
     submitBtn.textContent = 'Add Submission';
   }
@@ -703,9 +683,7 @@ document.getElementById('submission-form').addEventListener('submit', function(e
     const categoryRadios = document.getElementsByName('category');
     categoryRadios.forEach(radio => {
       const label = radio.parentElement;
-      if (label) {
-        label.style.border = '2px solid red';
-      }
+
     });
     setTimeout(() => {
       categoryRadios.forEach(radio => {
@@ -804,5 +782,6 @@ document.getElementById('toggle-sidebar-btn').addEventListener('click', () => {
   placesDiv.classList.toggle('sidebar-closed');
   toggleBtn.classList.toggle('move-btn');
 });
+
 
 
