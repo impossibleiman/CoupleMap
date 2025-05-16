@@ -681,6 +681,12 @@ document.getElementById('show-form-btn').addEventListener('click', () => {
   const imageCrop = document.getElementById('image-crop');
   // Clear image on new submission form
   imageCrop.src = '';
+
+  // Set lat and lng fields to current map center coordinates
+  const center = map.getCenter();
+  form.lat.value = center.lat.toFixed(6);
+  form.lng.value = center.lng.toFixed(6);
+
   const submitBtn = document.getElementById('submission-form-submit');
   if (submitBtn) {
     submitBtn.textContent = 'Add Submission';
