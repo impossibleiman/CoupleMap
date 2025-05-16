@@ -1,11 +1,35 @@
 const map = L.map('map', { maxBoundsViscosity: 1.0 }).setView([20, 0], 3);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+const CustomTileLayer = L.TileLayer.extend({
+  createTile: function(coords, done) {
+    const tile = document.createElement('img');
+
+    const maxTileX = Math.pow(2, coords.z) - 1;
+if (coords.x < 0 || coords.x > maxTileX) {
+  // Prevent loading tiles outside valid x range by setting transparent PNG
+  setTimeout(() => done(null, tile), 0);
+  tile.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8Xw8AAoMBgQp6XxkAAAAASUVORK5CYII=';
+  return tile;
+}
+
+    tile.onload = () => done(null, tile);
+    tile.onerror = () => done(new Error('Tile load error'), tile);
+
+    tile.alt = '';
+    tile.src = this.getTileUrl(coords);
+
+    return tile;
+  }
+});
+
+const tileLayer = new CustomTileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   minZoom: 2,
   maxZoom: 19,
   attribution: '© OpenStreetMap contributors',
   noWrap: true
-}).addTo(map);
+});
+
+tileLayer.addTo(map);
 
 const southWest = L.latLng(-90, -180);
 const northEast = L.latLng(90, 400);
