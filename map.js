@@ -198,7 +198,7 @@ function populatePlacesSection(places, containerId, category) {
         <h3>${place.name}</h3>
         <p>${formatDate(place.date)}</p>
       </div>
-      ${place.photo && place.photo.trim().length > 0 ? `<img src="${place.photo}" alt="${place.name}" />` : ''}
+${place.photo && place.photo.trim().length > 0 && place.photo !== 'data:,' ? `<img src="${place.photo}" alt="${place.name}" />` : ''}
     `;
     // Find the original index of this place in the original places array
     const originalIndex = places.findIndex(p => p === place);
